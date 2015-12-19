@@ -1,0 +1,29 @@
+@font-face {
+  font-family: "Varela Round";
+  src: url("../fonts/VarelaRound-Regular.otf");
+}
+
+html {
+  overflow-y: scroll;
+}
+
+body {
+  margin: 0;
+  color: #2d3339;
+  font-family: "Varela Round";
+  background: #edeff0;
+  font-size: 16px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.glyphicon {
+  font-size: 3em;
+}
+
+.glyphicon-ok, .glyphicon-remove {
+  display: block;
+  text-align: center;
+}

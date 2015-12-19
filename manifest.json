@@ -1,0 +1,11 @@
+{
+  "manifest_version": 2,
+  "name": "Passworks",
+  "version": "0.1",
+  "permissions": ["serial"],
+  "app": {
+    "background": {
+      "scripts": ["background.js"]
+    }
+  }
+}
