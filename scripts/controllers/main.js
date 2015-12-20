@@ -14,6 +14,7 @@ app.controller('mainCtrl', function($scope, SerialService) {
     $scope.authenticated = newVal;
     console.log("Authenticated: " + newVal);
     if (newVal) {
+      SerialService.writeSerial("NUM");
       SerialService.populate();
     }
   });
@@ -22,8 +23,6 @@ app.controller('mainCtrl', function($scope, SerialService) {
   $scope.$watch('serialService.getData()', function(newVal) {
     $scope.receivedData = newVal;
   });
-
-  SerialService.onReceive();
 
   $scope.accounts = [];
   $scope.$watch('serialService.getAccounts()', function(newVal) {
@@ -38,8 +37,7 @@ app.controller('mainCtrl', function($scope, SerialService) {
     var username = (pad + account.username).slice(-16);
     var password = (pad + account.password).slice(-16);
     console.log("Saving new account...");
-    SerialService.writeSerial("SAVE" + "&" + id + "&" + type
-                              + "&" + username + "&" + password);
+    SerialService.writeSerial("SAVE" + "&" + id + "&" + type + "&" + username + "&" + password);
     $scope.accounts.push(account);
     $scope.creating = false;
   }

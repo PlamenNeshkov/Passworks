@@ -14,9 +14,12 @@
         <h1>Passworks</h1>
       </div>
 
-      <div ng-hide="serialService.isAuthenticated()" ng-init="serialService.getDevices()">
+      {{receivedData}}
+
+      <div ng-hide="serialService.isAuthenticated()">
         <input type="text" ng-model="command"/>
         <input type="button" value="Send" ng-click="serialService.writeSerial(command)"/>
+        <input type="button" value="Connect" ng-click="serialService.getDevices()"/>
         <div class="well well-lg">
           <form ng-submit="serialService.authenticate(username, password)">
             <div class="form-group">

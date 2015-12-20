@@ -5,25 +5,25 @@ app.service('SerialService', function($rootScope) {
   var authenticated = false;
 
   var accounts = [];
-  var accountNum = 0;
+  this.accountNum = 0;
 
   this.getAccounts = function() {
     return accounts;
-  }
+  };
 
   this.isConnected = function() {
     return connected;
   };
   this.isAuthenticated = function() {
     return authenticated;
-  }
+  };
 
   // Connecting
   var connectionId = -1;
 
   this.onConnect = function(connectionInfo) {
     connectionId = connectionInfo.connectionId;
-    self.writeSerial("NG-INIT-HANDSHAKE&");
+    self.writeSerial("NG-INIT-HANDSHAKE");
   };
 
   this.connect = function(path) {
@@ -46,11 +46,11 @@ app.service('SerialService', function($rootScope) {
 
   // Reading
   var currentData = "";
-  var receivedData = [];
+  $rootScope.receivedData = [];
 
   this.getData = function() {
-    return receivedData;
-  }
+    return self.receivedData;
+  };
 
   this.buf2str = function(buf) {
     var bufView = new Uint8Array(buf);
@@ -62,8 +62,23 @@ app.service('SerialService', function($rootScope) {
     if (info.connectionId == connectionId && info.data) {
       var str = self.buf2str(info.data);
       if (str.charAt(str.length-1) === '\n') {
+
         currentData += str.substring(0, str.length - 1);
-        receivedData.push(currentData);
+        console.log(currentData);
+
+        var reply = currentData.replace(/[\r\n]/g, "");
+
+        if (reply == "PASSWORKS") {
+          console.log("connected");
+          connected = true;
+        } else if (reply == "AUTH-SUCCESS") {
+          authenticated = true;
+        } else if (reply.split("¦")[0] == "ALL") {
+          console.log(reply);
+        } else if (reply.split(" ")[0] == "NUM") {
+          self.accountNum = reply.split(" ")[1];
+          console.log("New acc num");
+        }
         $rootScope.$apply();
         currentData = "";
       } else {
@@ -74,7 +89,8 @@ app.service('SerialService', function($rootScope) {
 
   this.onReceive = function() {
     chrome.serial.onReceive.addListener(this.onReceiveCallback);
-  }
+  };
+  this.onReceive();
 
   //Writing
 
@@ -88,27 +104,6 @@ app.service('SerialService', function($rootScope) {
   };
 
   this.onSend = function() {
-    $rootScope.$watch('self.getData()', function handleChange(newValue, oldValue) {
-      console.log(receivedData);
-      var reply = receivedData[receivedData.length - 1].replace(/[\r\n]/g, "");
-      if (reply == "PASSWORKS") {
-        connected = true;
-      } else if (reply == "AUTH-SUCCESS") {
-        authenticated = true;
-      } else if (reply.split("¦")[0] == "ALL") {
-        console.log(reply);
-        // var t = reply.split(" ")[1].trim();
-        // var u = reply.split(" ")[2].trim();
-        // var p= reply.split(" ")[3].trim();
-        // accounts.push({
-        //   type: t,
-        //   username: u,
-        //   password: p
-        // });
-      } else if (reply.split(" ")[0] == "NUM") {
-        accountNum = reply.split(" ")[1];
-      }
-    });
   };
 
   this.writeSerial = function(str) {
@@ -119,26 +114,33 @@ app.service('SerialService', function($rootScope) {
   var devices = [];
 
   this.onGetDevices = function(ports) {
-    console.log("Attempting to connect to device...");
+    console.log("Getting devices...");
     angular.forEach(ports, function(value, index) {
       devices.push(value.path);
       if (connected == false) {
         self.connect(value.path);
       }
     });
+    //self.connect(ports[0].path);
   };
 
   this.getDevices = function() {
     chrome.serial.getDevices(this.onGetDevices);
   };
+  this.getDevices();
 
   // Auth
   this.authenticate = function(user, pass) {
     self.writeSerial("AUTH" + "&" + user + "&" + pass);
   };
 
+  this.getAcc = function(id) {
+   self.writeSerial("GET" + "&" + id);
+  };
+
   this.populate = function() {
     console.log("Retrieving all accounts");
-    self.writeSerial("ALL");
+    console.log(self.accountNum);
+    self.getAcc(0);
   }
 });
