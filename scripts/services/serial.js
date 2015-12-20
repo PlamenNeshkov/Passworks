@@ -4,6 +4,13 @@ app.service('SerialService', function($rootScope) {
   var connected = false;
   var authenticated = false;
 
+  var accounts = [];
+  var accountNum = 0;
+
+  this.getAccounts = function() {
+    return accounts;
+  }
+
   this.isConnected = function() {
     return connected;
   };
@@ -16,7 +23,7 @@ app.service('SerialService', function($rootScope) {
 
   this.onConnect = function(connectionInfo) {
     connectionId = connectionInfo.connectionId;
-    self.writeSerial("NG-INIT-HANDSHAKE");
+    self.writeSerial("NG-INIT-HANDSHAKE&");
   };
 
   this.connect = function(path) {
@@ -82,11 +89,24 @@ app.service('SerialService', function($rootScope) {
 
   this.onSend = function() {
     $rootScope.$watch('self.getData()', function handleChange(newValue, oldValue) {
+      console.log(receivedData);
       var reply = receivedData[receivedData.length - 1].replace(/[\r\n]/g, "");
       if (reply == "PASSWORKS") {
         connected = true;
       } else if (reply == "AUTH-SUCCESS") {
         authenticated = true;
+      } else if (reply.split("¦")[0] == "ALL") {
+        console.log(reply);
+        // var t = reply.split(" ")[1].trim();
+        // var u = reply.split(" ")[2].trim();
+        // var p= reply.split(" ")[3].trim();
+        // accounts.push({
+        //   type: t,
+        //   username: u,
+        //   password: p
+        // });
+      } else if (reply.split(" ")[0] == "NUM") {
+        accountNum = reply.split(" ")[1];
       }
     });
   };
@@ -108,8 +128,6 @@ app.service('SerialService', function($rootScope) {
     });
   };
 
-
-
   this.getDevices = function() {
     chrome.serial.getDevices(this.onGetDevices);
   };
@@ -119,9 +137,8 @@ app.service('SerialService', function($rootScope) {
     self.writeSerial("AUTH" + "&" + user + "&" + pass);
   };
 
-
-  this.getAcc = function(name)
-  {
-    self.writeSerial("GET");
-  };
+  this.populate = function() {
+    console.log("Retrieving all accounts");
+    self.writeSerial("ALL");
+  }
 });

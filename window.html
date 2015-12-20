@@ -14,8 +14,6 @@
         <h1>Passworks</h1>
       </div>
 
-      {{receivedData}}
-
       <div ng-hide="serialService.isAuthenticated()" ng-init="serialService.getDevices()">
         <input type="text" ng-model="command"/>
         <input type="button" value="Send" ng-click="serialService.writeSerial(command)"/>
@@ -55,9 +53,8 @@
             <account-form></account-form>
           </form>
         </div>
-        {{receivedData}}
-        <input type="text" ng-model="get"/>
-        <input type="button" value="Get Acc" ng-click="serialService.getAcc(get)">
+        <input type="text" ng-model="id"/>
+        <input type="button" value="Get Acc" ng-click="serialService.getAcc(id)">
         <ul class="list-group">
           <li ng-repeat="account in accounts" class="list-group-item">
             <h4 ng-click="account.updating = true">{{account.type}}</h4>

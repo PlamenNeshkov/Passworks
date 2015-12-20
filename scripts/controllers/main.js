@@ -13,6 +13,9 @@ app.controller('mainCtrl', function($scope, SerialService) {
   $scope.$watch('serialService.isAuthenticated()', function(newVal) {
     $scope.authenticated = newVal;
     console.log("Authenticated: " + newVal);
+    if (newVal) {
+      SerialService.populate();
+    }
   });
 
   $scope.receivedData = [];
@@ -22,25 +25,21 @@ app.controller('mainCtrl', function($scope, SerialService) {
 
   SerialService.onReceive();
 
-  $scope.accounts = [
-    {
-      type: "Steam",
-      username: "pesho1",
-      password: "123"
-    },
-    {
-      type: "Google",
-      username: "gosho2",
-      password: "456"
-    },
-    {
-      type: "Facebook",
-      username: "ivancho3",
-      password: "789"
-    }
-  ];
+  $scope.accounts = [];
+  $scope.$watch('serialService.getAccounts()', function(newVal) {
+    $scope.accounts = newVal;
+  });
 
   $scope.createAccount = function(account) {
+    var pad = "                ";
+
+    var id = $scope.accounts.length;
+    var type = (pad + account.type).slice(-16);
+    var username = (pad + account.username).slice(-16);
+    var password = (pad + account.password).slice(-16);
+    console.log("Saving new account...");
+    SerialService.writeSerial("SAVE" + "&" + id + "&" + type
+                              + "&" + username + "&" + password);
     $scope.accounts.push(account);
     $scope.creating = false;
   }
