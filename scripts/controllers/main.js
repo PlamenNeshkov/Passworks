@@ -1,6 +1,27 @@
 'use strict';
 
-app.controller('mainCtrl', function($scope) {
+app.controller('mainCtrl', function($scope, SerialService) {
+  $scope.serialService = SerialService;
+
+  $scope.connected = false;
+  $scope.$watch('serialService.isConnected()', function(newVal) {
+    $scope.connected = newVal;
+    console.log("Connected: " + newVal);
+  });
+
+  $scope.authenticated = false;
+  $scope.$watch('serialService.isAuthenticated()', function(newVal) {
+    $scope.authenticated = newVal;
+    console.log("Authenticated: " + newVal);
+  });
+
+  $scope.receivedData = [];
+  $scope.$watch('serialService.getData()', function(newVal) {
+    $scope.receivedData = newVal;
+  });
+
+  SerialService.onReceive();
+
   $scope.accounts = [
     {
       type: "Steam",

@@ -7,25 +7,28 @@
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/angular-csp.css">
   </head>
-  <body ng-controller="serialCtrl">
-
+  <body ng-controller="mainCtrl">
 
     <div class="container-fluid">
       <div class="row">
         <h1>Passworks</h1>
       </div>
 
-      <div ng-hide="authenticated" ng-init="getDevices()">
+      {{receivedData}}
+
+      <div ng-hide="serialService.isAuthenticated()" ng-init="serialService.getDevices()">
+        <input type="text" ng-model="command"/>
+        <input type="button" value="Send" ng-click="serialService.writeSerial(command)"/>
         <div class="well well-lg">
-          <form ng-submit="authenticate()">
+          <form ng-submit="serialService.authenticate(username, password)">
             <div class="form-group">
               <label for="username">Username</label>
-              <input class="form-control" id="username" type="text" ng-model="credentials.username"/>
+              <input class="form-control" id="username" type="text" ng-model="username"/>
             </div>
 
             <div class="form-group">
               <label for="password">Password</label>
-              <input class="form-control" id="password" type="password" ng-model="credentials.password"/>
+              <input class="form-control" id="password" type="password" ng-model="password"/>
             </div>
 
             <div class="text-center"><input type="submit" class="btn btn-primary" value="Authenticate"/></div>
@@ -41,16 +44,20 @@
         </div>
       </div>
 
-      <div ng-show="authenticated" ng-controller="mainCtrl" class="row">
-        <input ng-hide="creating" type="button" ng-click="creating = true"
+      <div ng-show="serialService.isAuthenticated()" class="row">
+        <div class="text-center">
+          <input ng-hide="creating" type="button" ng-click="creating = true"
                 class="btn btn-primary" value="Add account"/>
+        </div>
 
         <div ng-show="creating" class="well">
           <form ng-submit="createAccount(account)">
             <account-form></account-form>
           </form>
         </div>
-
+        {{receivedData}}
+        <input type="text" ng-model="get"/>
+        <input type="button" value="Get Acc" ng-click="serialService.getAcc(get)">
         <ul class="list-group">
           <li ng-repeat="account in accounts" class="list-group-item">
             <h4 ng-click="account.updating = true">{{account.type}}</h4>
@@ -69,8 +76,9 @@
     <script src="vendor/bootstrap.min.js"></script>
     <script src="vendor/angular.min.js"></script>
     <script src="scripts/app.js"></script>
-    <script src="scripts/controllers/serial.js"></script>
+    <script src="scripts/services/serial.js"></script>
     <script src="scripts/controllers/main.js"></script>
     <script src="scripts/directives/account-form.js"></script>
+
   </body>
 </html>

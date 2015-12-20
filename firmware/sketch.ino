@@ -4,41 +4,16 @@
 #include <Wire.h>
 #include "Adafruit_FRAM_I2C.h"
 
-#define INPUT_SIZE 1024
-
 Adafruit_FRAM_I2C fram = Adafruit_FRAM_I2C();
-uint16_t framAddr = 0;
+uint16_t framAddr = 0; 
 
-char user[33];
-char pass[33];
+String inData;
 
-byte isAuth = 0;
-
-uint8_t salt[] = {
+uint8_t salt[]={
   0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b
 };
 
 uint8_t* aes_key;
-uint8_t* auth_hash;
-
-void kdf(char* pwd) {
-  Sha256.initHmac(salt, 20);
-  Sha256.print(pwd);
-  auth_hash = Sha256.resultHmac();
-
-  for (int i = 0; i < 98; i++) {
-    Sha256.initHmac(auth_hash, 256);
-    Sha256.print(pwd);
-    auth_hash = Sha256.resultHmac();
-  }
-
-  aes_key = (uint8_t*) malloc(32);
-  memcpy(aes_key, auth_hash, 32);
-
-  Sha256.initHmac(auth_hash, 32);
-  Sha256.print(pwd);
-  uint8_t* auth_hash = Sha256.resultHmac();
-}
 
 void printHash(uint8_t* hash) {
   for (int i=0; i<32; i++) {
@@ -48,48 +23,165 @@ void printHash(uint8_t* hash) {
   Serial.println();
 }
 
-void auth() {
-  char u[33];
-  for (uint16_t i = 32704; i < 32736; i++) {
-    u[i-32704] = (char)fram.read8(i);
-  }
-  u[32] = '\0';
+uint8_t* kdf(char* pwd) {
+  Sha256.initHmac(salt, 20);
+  Sha256.print(pwd);
+  uint8_t* auth_hash = Sha256.resultHmac();
 
-  char p[33];
-  for (uint16_t i = 32736; i < 32768; i++) {
-    p[i-32736] = (char)fram.read8(i);
-  }
-  p[32] = '\0';
+  //  for (int i = 0; i < 5; i++) {
+  //    Sha256.initHmac(auth_hash, 32);
+  //    Sha256.print(pwd);
+  //    auth_hash = Sha256.resultHmac();
+  //  }
 
-  if ((strcmp(user, u) == 0) && (strcmp(pass, p) == 0)) {
-    isAuth = 1;
+  // Write pass hash to FRAM
+  //  for (uint16_t i = 32704; i < 32768; i++) {
+  //    fram.write8(i, auth_hash[i - 32704]);
+  //  }
+
+  return auth_hash;
+
+  //  char test[65];
+  //  for (uint16_t i = 32704; i < 32768; i++) {
+  //    test[i - 32704] = (char)fram.read8(i);
+  //  }
+
+  //  aes_key = (uint8_t*) malloc(32);
+  //  memcpy(aes_key, auth_hash, 32);
+  //
+  //  Sha256.initHmac(auth_hash, 32);
+  //  Sha256.print(pwd);
+  //  aes_key = Sha256.resultHmac();
+  //
+  //  printHash(aes_key);
+}
+
+void getKey(const uint8_t* auth_hash, char* pwd) {
+  Sha256.initHmac(auth_hash, 32);
+  Sha256.print(pwd);
+  aes_key = Sha256.result();
+  //  printHash(aes_key);
+}
+
+void auth(char* user, char* pass) {
+  uint8_t* auth_hash = kdf(pass);
+
+  byte isAuth = 0;
+
+  uint8_t stored_hash[64];
+  for (uint16_t i = 32704; i < 32768; i++) {
+    stored_hash[i - 32704] = fram.read8(i);
+  }
+
+  //  printHash(stored_hash);
+  //  printHash(auth_hash);
+
+  isAuth = 1;
+  for (byte i = 0; i < 64; i++) {
+    if (auth_hash[i] != stored_hash[i]) {
+      isAuth = 0;
+      break;
+    }
+  }
+
+  getKey(auth_hash, pass);
+
+  if (isAuth == 1) {
     Serial.println("AUTH-SUCCESS");
+    delay(100);
+  } else {
+    Serial.println("AUTH-FAIL");
     delay(100);
   }
 }
 
-void readS() {
-  char in[INPUT_SIZE + 1];
-  byte size = Serial.readBytes(in, INPUT_SIZE);
-  in[size] = 0;
+void getAcc(int id) {
+  int offset = id*32;
 
-  char* command = strtok(in, "&");
-  delay(100);
+  uint8_t* u = (uint8_t*) malloc(32);
+  uint8_t* p = (uint8_t*) malloc(32);
+  uint8_t* t = (uint8_t*) malloc(32);
+  for (uint16_t i = offset; i < offset+32; i++) {
+    t[i] = fram.read8(i);
+  }
+  for (uint16_t i = offset+32; i < offset+64; i++) {
+    u[i-32] = fram.read8(i);
+  }
+  for (uint16_t i = offset+64; i < offset+96; i++) {
+    p[i-64] = fram.read8(i);
+  }
+
+  char* type = (char*) malloc(32);
+  char* user = (char*) malloc(32);
+  char* pass = (char*) malloc(32);
+  memcpy(type, t, 32);
+  memcpy(user, u, 32);
+  memcpy(pass, p, 32);
+  aes256_dec_single(aes_key, user);
+  aes256_dec_single(aes_key, pass);
+  Serial.println(type);
+  Serial.println(user);
+  Serial.println(pass);
+
+  free(t);
+  free(u);
+  free(p);
+  free(type);
+  free(user);
+  free(pass);
+}
+
+void readS() {
+  char input[128];
+  input[0] = '\0';
+
+  while (Serial.available() > 0) {
+    char received = Serial.read();
+    inData += received; 
+
+    if (received == '\n') {
+      inData.replace("\n", "");
+      inData.toCharArray(input, 128);
+      inData = ""; 
+    }
+  }
+
+  char* command = strtok(input, "&");
   if (strcmp(command, "NG-INIT-HANDSHAKE") == 0) {
     Serial.println("PASSWORKS");
     delay(100);
   } else if (strcmp(command, "AUTH") == 0) {
-    command = strtok(0, "&");
-    strcpy(user, command);
-    user[32] = '\0';
+    char* user;
+    char* pass;
+
+    user = strtok(0, "&");
     delay(100);
 
-    command = strtok(0, "&");
-    strcpy(pass, command);
-    pass[32] = '\0';
+    pass = strtok(0, "&");
     delay(100);
 
-    auth();
+    auth(user, pass);
+  } else if (strcmp(command, "GET") == 0) {
+
+    char* user = "aaaaaaaaaaaaaaaa";
+    aes256_enc_single(aes_key, user);
+
+    char* pass = "bbbbbbbbbbbbbbbb";
+    aes256_enc_single(aes_key, pass);
+
+    char* type = "cccccccccccccccc";
+
+    for (uint16_t i = 0; i < 32; i++) {
+      fram.write8(i, (uint8_t)type[i]);
+    }
+    for (uint16_t i = 32; i < 64; i++) {
+      fram.write8(i, (uint8_t)user[i-32]);
+    }
+    for (uint16_t i = 64; i < 96; i++) {
+      fram.write8(i, (uint8_t)pass[i-64]);
+    }
+
+    getAcc(0);
   }
 }
 
@@ -123,6 +215,6 @@ void setup() {
 }
 
 void loop() {
-  while(!Serial.available());
+  while (!Serial.available());
   readS();
 }
